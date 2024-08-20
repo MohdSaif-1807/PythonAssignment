@@ -8,11 +8,11 @@ This project demonstrate the use FlaskAPI with API endpoints, with a test suite.
   1. we need to clone the repository with the command:
 
     ```
-      git clone 'https://github.com/MohdSaif-1807/PythonAssignment'
+    git clone 'https://github.com/MohdSaif-1807/PythonAssignment'
     ```
   2. In order to start the FlaskAPI application we need to type the command as follows:
      
-     ```
+    ```
      flaskapi dev main.py
     ```
 
@@ -108,8 +108,3 @@ In order to run the Test script for API's we need to run the command as follows:
 
 
 
-Thank you for using this FastAPI application!
-
-```
-
-Make sure to replace placeholders such as `your-email@example.com`, `yourusername`, and `your-repository` with your actual details. Adjust the content if there are additional specifics or features you want to highlight.
