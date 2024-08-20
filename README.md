@@ -21,12 +21,12 @@ This project demonstrate the use FlaskAPI with API endpoints, with a test suite.
      ```
      MONGO_URL = "<valid mongo url>"
      ```
-  3. Also we have to enable the code and need to call the function by uncommenting it:
+  3. Also we have to Uncomment the below code from main.py to parse and insert data into MongoDB:
      ```
-     
+     parse_courses(courses)
      ```
     
-  5. In order to start the FlaskAPI application we need to type the command as follows:
+  4. In order to start the FlaskAPI application we need to type the command as follows:
      
   ```
     fastapi dev main.py
