@@ -16,8 +16,17 @@ This project demonstrate the use FlaskAPI with API endpoints, with a test suite.
 
   
     git clone 'https://github.com/MohdSaif-1807/PythonAssignment'
+
+  2. Create a .env file and  mongodb url with variable in the following way
+     ```
+     MONGO_URL = "<valid mongo url>"
+     ```
+  3. Also we have to enable the code and need to call the function by uncommenting it:
+     ```
+     
+     ```
     
-  2. In order to start the FlaskAPI application we need to type the command as follows:
+  5. In order to start the FlaskAPI application we need to type the command as follows:
      
   ```
     fastapi dev main.py
