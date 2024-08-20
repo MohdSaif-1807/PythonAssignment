@@ -7,14 +7,13 @@ This project demonstrate the use FlaskAPI with API endpoints, with a test suite.
 **In order to run the FastAPI application on the local system:**
   1. we need to clone the repository with the command:
 
-    ```
+  
     git clone 'https://github.com/MohdSaif-1807/PythonAssignment'
-    ```
+    
   2. In order to start the FlaskAPI application we need to type the command as follows:
      
-    ```
+    
      flaskapi dev main.py
-    ```
 
 Once we start the application, we can access the FastAPI application at:
 
