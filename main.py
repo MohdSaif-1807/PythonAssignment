@@ -1,37 +1,41 @@
-from fastapi import FastAPI,HTTPException
+from fastapi import FastAPI, HTTPException
+from pymongo import MongoClient
+from datetime import datetime
+from bson import ObjectId # type: ignore
+from pydantic import BaseModel
+import json
+import os
+from dotenv import load_dotenv
 
+# Initialize FastAPI
 app = FastAPI()
 
-import json
-from pymongo import MongoClient
-from bson import ObjectId
-from datetime import datetime
-from pydantic import BaseModel
-from bson.json_util import dumps, loads 
+# Load environment variables
+load_dotenv()
+
 # Load JSON data
 with open('courses.json', 'r') as file:
     courses = json.load(file)
 
 # Connect to MongoDB
-client = MongoClient('mongodb://localhost:27017/')
+client = MongoClient(os.getenv("MONGO_URL"))
 db = client['Coursesdata']
 
-# # Drop existing collections if any
+# Drop existing collections if any (Uncomment to use)
 # db.courses.drop()
 
-# Create collections
+# Create collection
 course_collection = db['courses']
 
 # Create indices
-course_collection.create_index({
-    'course_title':1,
-    'date':-1,
-    'total_course_rating':-1
-})
+course_collection.create_index([
+    ('name', 1),
+    ('date', -1),
+    ('course_average_rating', -1)
+])
 
 class Rating(BaseModel):
     rating_value: float
-
 
 # Convert data to the correct format and insert into MongoDB
 def parse_courses(courses):
@@ -43,107 +47,95 @@ def parse_courses(courses):
         temp_chapters = []
         for i in course['chapters']:
             temp_chapters.append({
-                '_id':ObjectId(),
-                'title': i['name'], 
-                'text': i['text'],
-                'total_rating':0.0,
-                'average_rating':0.0,
-                'total_rating_count':0
+                '_id': ObjectId(),
+                'title': i['title'],
+                'text': i['contents'],
+                'total_rating': 0.0,
+                'average_rating': 0.0,
+                'total_rating_count': 0
             })
         course['chapters'] = temp_chapters
         course_collection.insert_one(course)
 
+# Uncomment to parse and insert data into MongoDB
 # parse_courses(courses)
-# print("Data inserted into MongoDB sucessfully.")
-
+# print("Data inserted into MongoDB successfully.")
 
 @app.get('/fetch-all-courses')
-async def get_all_course(domain: str | None = None):
+async def get_all_courses(domain: str | None = None):
     try:
-        sorted_data = []
+        query = {}
         if domain:
-            sorted_data = course_collection.find({ "domain": { "$elemMatch": { "$eq":domain } } }).sort({
-            'name':1,
-            'date':-1,
-            'course_average_rating':-1
-            })
-            temp_data = list(sorted_data)
-            if(len(list(temp_data)) == 0):
-                raise HTTPException(status_code=404,detail=f"No record found with the following domain: {domain}")
-            sorted_data = temp_data
-        else:
-            sorted_data = course_collection.find({}).sort({
-            'name':1,
-            'date':-1,
-            'course_average_rating':-1
-            })
+            query['domain'] = domain
+        sorted_data = course_collection.find(query).sort([
+            ('name', 1),
+            ('date', -1),
+            ('course_average_rating', -1)
+        ])
         result_data = []
-        for i in list(sorted_data):
+        for course in sorted_data:
             chapters_count = []
-            for j in i['chapters']:
+            for chapter in course['chapters']:
                 chapters_count.append({
-                     '_id':str(j['_id']),
-                    'title':j['title'],
-                    'text': j['text'],
-                    'total_rating':j['total_rating'],
-                    'average_rating':j['average_rating'],
-                    'total_rating_count':j['total_rating_count']
+                    '_id': str(chapter['_id']),
+                    'title': chapter['title'],
+                    'text': chapter['text'],
+                    'total_rating': chapter['total_rating'],
+                    'average_rating': chapter['average_rating'],
+                    'total_rating_count': chapter['total_rating_count']
                 })
             result_data.append({
-                '_id':str(i['_id']),
-                'name':i['name'],
-                'date':i['date'],
-                'description':i['description'],
-                'domain':i['domain'],
-                'chapters':chapters_count,
-                'course_average_rating':i['course_average_rating'],
-                'total_course_rating':i['total_course_rating'],
-                'course_rating_count':i['course_rating_count']
+                '_id': str(course['_id']),
+                'name': course['name'],
+                'date': course['date'],
+                'description': course['description'],
+                'domain': course['domain'],
+                'chapters': chapters_count,
+                'course_average_rating': course['course_average_rating'],
+                'total_course_rating': course['total_course_rating'],
+                'course_rating_count': course['course_rating_count']
             })
-        return list(result_data)
+        if not result_data:
+            raise HTTPException(status_code=404, detail=f"No records found for domain: {domain}")
+        return result_data
     except HTTPException as http_error:
-        raise http_error  
+        raise http_error
     except Exception as e:
-        raise HTTPException(status_code=500,detail=str(e))
-    
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get('/fetch-specific-record/{course_id}')
 async def get_specific_record(course_id: str):
     try:
         course_object_id = ObjectId(course_id)
-        data = course_collection.find_one({"_id":course_object_id})
-        if data:
+        course = course_collection.find_one({"_id": course_object_id})
+        if course:
             chapters_count = []
-            for j in data['chapters']:
+            for chapter in course['chapters']:
                 chapters_count.append({
-                     '_id':str(j['_id']),
-                    'title':j['title'],
-                    'text': j['text'],
-                    'total_rating':j['total_rating'],
-                    'average_rating':j['average_rating'],
-                    'total_rating_count':j['total_rating_count']
+                    '_id': str(chapter['_id']),
+                    'title': chapter['title'],
+                    'text': chapter['text'],
+                    'total_rating': chapter['total_rating'],
+                    'average_rating': chapter['average_rating'],
+                    'total_rating_count': chapter['total_rating_count']
                 })
-            specific_data = {
-              '_id':str(data['_id']),
-                'name':data['name'],
-                'date':data['date'],
-                'description':data['description'],
-                'domain':data['domain'],
-                'chapters':chapters_count,
-                'course_average_rating':data['course_average_rating'],
-                'total_course_rating':data['total_course_rating'],
-                'course_rating_count':data['course_rating_count']         
+            return {
+                '_id': str(course['_id']),
+                'name': course['name'],
+                'date': course['date'],
+                'description': course['description'],
+                'domain': course['domain'],
+                'chapters': chapters_count,
+                'course_average_rating': course['course_average_rating'],
+                'total_course_rating': course['total_course_rating'],
+                'course_rating_count': course['course_rating_count']
             }
-            return specific_data
         else:
-            raise HTTPException(status_code=404,detail="No record found with provided course_id")
+            raise HTTPException(status_code=404, detail="No record found with the provided course_id")
     except HTTPException as http_error:
         raise http_error
     except Exception as e:
-        print(e)
-        return HTTPException(status_code=500,detail=str(e))
-    
-
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get('/fetch-specific-chapter-from-record/{chapter_id}')
 async def get_specific_chapter(chapter_id: str):
@@ -158,124 +150,114 @@ async def get_specific_chapter(chapter_id: str):
         )
         if data:
             chapter = data["chapters"][0]
-            resultant_data = {
-                '_id':str(data['_id']),
+            return {
+                '_id': str(data['_id']),
                 'chapters': {
                     '_id': str(chapter['_id']),
                     'title': chapter['title'],
                     'text': chapter['text'],
-                    'total_rating':chapter['total_rating'],
-                    'average_rating':chapter['average_rating'],
-                    'total_rating_count':chapter['total_rating_count']
+                    'total_rating': chapter['total_rating'],
+                    'average_rating': chapter['average_rating'],
+                    'total_rating_count': chapter['total_rating_count']
                 }
             }
-            return resultant_data
         else:
-            raise HTTPException(status_code=404,detail=f"No record found with provided chapter_id: {chapter_id}")
-    except HTTPException as http_error:
-        raise http_error
-    except Exception as e:
-        raise HTTPException(status_code=500,detail=str(e))
-
-
-@app.post('/add-rating/{chapter_id}',status_code=201)
-async def give_rating(chapter_id: str,rating: Rating):
-    try:
-        #updating chapter count,total
-        course_collection.update_one(
-        {
-            'chapters._id':ObjectId(chapter_id)
-        },
-        {
-            "$inc":{
-                "chapters.$.total_rating_count":1,
-                "chapters.$.total_rating":rating.rating_value
-            }
-        })
-        temp_chapter_data = course_collection.find_one(
-            {
-                'chapters._id':ObjectId(chapter_id)
-            },
-            {
-                'chapters.$':1
-            }
-        )
-        tp_chapter = temp_chapter_data['chapters']
-        #updating average rating
-        course_collection.update_one({
-            'chapters._id':ObjectId(chapter_id)
-        },{
-            
-                "$set":
-                {
-             "chapters.$.average_rating":(tp_chapter[0]['total_rating']/tp_chapter[0]['total_rating_count'])
-                }
-            
-        })
-
-        course_collection.update_one(
-                {
-                    '_id':ObjectId(temp_chapter_data['_id'])
-                },
-                {
-                    "$inc":{
-                        "course_rating_count":1,
-                        "total_course_rating":rating.rating_value
-                    }
-                }
-        )
-        temp_course_data = course_collection.find_one({
-            "_id":ObjectId(temp_chapter_data['_id'])
-        })
-        if temp_chapter_data:
-            course_collection.update_one(
-                {
-                    "_id":ObjectId(temp_chapter_data['_id'])
-                },
-                {
-                    "$set":{
-                        "course_average_rating":(temp_course_data['total_course_rating']/temp_course_data['course_rating_count'])
-                    }
-                }
-            )
-            resultant_data = course_collection.find_one({
-            "_id":ObjectId(temp_chapter_data['_id'])
-            })
-            chapters_count = []
-            for j in resultant_data['chapters']:
-                chapters_count.append({
-                     '_id':str(j['_id']),
-                    'title':j['title'],
-                    'text': j['text'],
-                    'total_rating':j['total_rating'],
-                    'average_rating':j['average_rating'],
-                    'total_rating_count':j['total_rating_count']
-                })
-            specific_data = {
-              '_id':str(resultant_data['_id']),
-                'name':resultant_data['name'],
-                'date':resultant_data['date'],
-                'description':resultant_data['description'],
-                'domain':resultant_data['domain'],
-                'chapters':chapters_count,
-                'course_average_rating':resultant_data['course_average_rating'],
-                'total_course_rating':resultant_data['total_course_rating'],
-                'course_rating_count':resultant_data['course_rating_count']         
-            }
-            return specific_data
-        else:
-            raise HTTPException(status_code=404,detail=f"No record found with the following chapter id: {chapter_id}")
+            raise HTTPException(status_code=404, detail=f"No record found with provided chapter_id: {chapter_id}")
     except HTTPException as http_error:
         raise http_error
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post('/add-rating/{chapter_id}', status_code=201)
+async def give_rating(chapter_id: str, rating: Rating):
+    try:
+        # Update chapter rating
+        result = course_collection.update_one(
+            {'chapters._id': ObjectId(chapter_id)},
+            {
+                "$inc": {
+                    "chapters.$.total_rating_count": 1,
+                    "chapters.$.total_rating": rating.rating_value
+                }
+            }
+        )
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail=f"No record found with the following chapter_id: {chapter_id}")
 
+        # Update chapter average rating
+        chapter_data = course_collection.find_one(
+            {'chapters._id': ObjectId(chapter_id)},
+            {'chapters.$': 1}
+        )
+        if not chapter_data:
+            raise HTTPException(status_code=404, detail="Chapter data not found")
 
+        chapter = chapter_data['chapters'][0]
+        average_rating = chapter['total_rating'] / chapter['total_rating_count']
 
+        course_collection.update_one(
+            {'chapters._id': ObjectId(chapter_id)},
+            {
+                "$set": {
+                    "chapters.$.average_rating": average_rating
+                }
+            }
+        )
+
+        # Update course ratings
+        course_id = chapter_data['_id']
+        course_collection.update_one(
+            {'_id': ObjectId(course_id)},
+            {
+                "$inc": {
+                    "course_rating_count": 1,
+                    "total_course_rating": rating.rating_value
+                }
+            }
+        )
+
+        # Recalculate course average rating
+        course_data = course_collection.find_one({'_id': ObjectId(course_id)})
+        if course_data:
+            course_average_rating = course_data['total_course_rating'] / course_data['course_rating_count']
+            course_collection.update_one(
+                {'_id': ObjectId(course_id)},
+                {
+                    "$set": {
+                        "course_average_rating": course_average_rating
+                    }
+                }
+            )
+
+            # Return updated course data
+            chapters_count = []
+            for chapter in course_data['chapters']:
+                chapters_count.append({
+                    '_id': str(chapter['_id']),
+                    'title': chapter['title'],
+                    'text': chapter['text'],
+                    'total_rating': chapter['total_rating'],
+                    'average_rating': chapter['average_rating'],
+                    'total_rating_count': chapter['total_rating_count']
+                })
+            return {
+                '_id': str(course_data['_id']),
+                'name': course_data['name'],
+                'date': course_data['date'],
+                'description': course_data['description'],
+                'domain': course_data['domain'],
+                'chapters': chapters_count,
+                'course_average_rating': course_data['course_average_rating'],
+                'total_course_rating': course_data['total_course_rating'],
+                'course_rating_count': course_data['course_rating_count']
+            }
+        else:
+            raise HTTPException(status_code=404, detail=f"No record found with course_id: {course_id}")
+    except HTTPException as http_error:
+        raise http_error
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get('/')
 async def main():
-    return {
-        'message': 'hello world'
-    }
+    return {'message': 'hello world'}

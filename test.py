@@ -48,7 +48,7 @@ def test_fetching_available_courses():
 
 
 def test_fetching_of_specific_course():
-    course_id = "66c1d1e4f32eec07b3115689"
+    course_id = "66c4259676f7980192ddb982"
     url = "http://127.0.0.1:8000/fetch-specific-record"
     response = requests.get(f"{url}/{course_id}")
     assert response.status_code == 200
@@ -65,7 +65,7 @@ def test_fetching_of_specific_course():
 
 
 def test_fetching_of_specific_chapter():
-    chapter_id = "66c1d1e4f32eec07b3115677"
+    chapter_id = "66c4259676f7980192ddb970"
     url = "http://127.0.0.1:8000/fetch-specific-chapter-from-record"
     response = requests.get(f"{url}/{chapter_id}")
     data = response.json()
@@ -82,7 +82,7 @@ def test_fetching_of_specific_chapter():
 
 
 def test_add_new_rating():
-    chapter_id = "66c1d1e4f32eec07b3115678"
+    chapter_id = "66c4259676f7980192ddb970"
     url = f"http://127.0.0.1:8000/add-rating/{chapter_id}"
     body_json = {
         "rating_value" : 5
