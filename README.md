@@ -69,7 +69,7 @@ You can explore the API documentation and interact with the endpoints directly f
    **Path Parameters:**
    - `course_id`: The ID of the course to retrieve.
 
-  **Screenshot to fetch specific record:**
+  **Screenshot to fetch specific course:**
 
   ![Screenshot (5)](https://github.com/user-attachments/assets/f3b748fd-11eb-441e-a9b2-282bff99870c)
 
